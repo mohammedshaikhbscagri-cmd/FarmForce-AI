@@ -1,0 +1,62 @@
+from typing import AsyncGenerator
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from jose import JWTError
+
+from app.database import AsyncSessionLocal
+from app.core.security import verify_access_token
+from app.utils.constants import UserRole
+
+bearer_scheme = HTTPBearer()
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.models.user import User
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = verify_access_token(credentials.credentials)
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def require_farmer(current_user=Depends(get_current_user)):
+    if current_user.role != UserRole.FARMER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Farmers only")
+    return current_user
+
+
+async def require_worker(current_user=Depends(get_current_user)):
+    if current_user.role != UserRole.WORKER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workers only")
+    return current_user
