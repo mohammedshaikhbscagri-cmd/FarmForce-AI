@@ -9,6 +9,7 @@ from app.core.dependencies import get_db, get_current_user, require_farmer
 from app.schemas.payment import CreateOrderRequest, CreateOrderResponse, VerifyPaymentRequest, PaymentResponse
 from app.models.payment import Payment
 from app.models.booking import Booking
+from app.models.job import Job
 from app.models.user import User
 from app.services.payment_service import PaymentService
 from app.utils.constants import PaymentStatus
@@ -31,9 +32,7 @@ async def create_order(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
 
     job_result = await db.execute(
-        select(__import__("app.models.job", fromlist=["Job"]).Job).where(
-            __import__("app.models.job", fromlist=["Job"]).Job.id == booking.job_id
-        )
+        select(Job).where(Job.id == booking.job_id)
     )
     job = job_result.scalar_one_or_none()
     amount = job.wage_per_day if job else Decimal("300")

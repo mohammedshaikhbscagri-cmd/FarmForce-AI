@@ -7,6 +7,7 @@ from sqlalchemy import select
 from app.core.dependencies import get_db, get_current_user
 from app.schemas.review import ReviewCreate, ReviewResponse
 from app.models.review import Review
+from app.models.job import Job
 from app.models.user import User
 
 router = APIRouter()
@@ -24,7 +25,13 @@ async def create_review(
     if not booking:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
 
-    reviewee_id = booking.worker_id if current_user.id == booking.job_id else booking.worker_id
+    # If current user is the worker, they review the farmer; otherwise the farmer reviews the worker
+    job_result = await db.execute(select(Job).where(Job.id == booking.job_id))
+    job = job_result.scalar_one_or_none()
+    if current_user.id == booking.worker_id:
+        reviewee_id = job.farmer_id if job else booking.job_id
+    else:
+        reviewee_id = booking.worker_id
 
     review = Review(
         booking_id=body.booking_id,

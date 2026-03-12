@@ -5,25 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError
 
-from app.database import AsyncSessionLocal
+from app.database import get_db  # noqa: F401 — re-exported for convenience
 from app.core.security import verify_access_token
 from app.utils.constants import UserRole
 
 bearer_scheme = HTTPBearer()
-
-
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
-
-
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),

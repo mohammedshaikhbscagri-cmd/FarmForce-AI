@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
@@ -17,6 +18,14 @@ class Settings(BaseSettings):
     PLATFORM_COMMISSION_RATE: float = 0.075
     APP_NAME: str = "FarmForce AI"
     DEBUG: bool = False
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if not self.DEBUG and self.JWT_SECRET_KEY == "changeme-in-production":
+            raise ValueError(
+                "JWT_SECRET_KEY must be changed from the default value in production (DEBUG=False)"
+            )
+        return self
 
     class Config:
         env_file = ".env"

@@ -18,12 +18,20 @@ resource "aws_vpc" "main" {
   tags = { Name = "farmforce-vpc" }
 }
 
-resource "aws_subnet" "public" {
+resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
   availability_zone       = "${var.region}a"
   map_public_ip_on_launch = true
-  tags = { Name = "farmforce-public-subnet" }
+  tags = { Name = "farmforce-public-subnet-a" }
+}
+
+resource "aws_subnet" "public_b" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "${var.region}b"
+  map_public_ip_on_launch = true
+  tags = { Name = "farmforce-public-subnet-b" }
 }
 
 resource "aws_internet_gateway" "gw" {
@@ -39,8 +47,13 @@ resource "aws_route_table" "public" {
   }
 }
 
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
+resource "aws_route_table_association" "public_a" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.public_b.id
   route_table_id = aws_route_table.public.id
 }
 
@@ -83,11 +96,11 @@ resource "aws_security_group" "db" {
 
 # EC2 for Backend
 resource "aws_instance" "backend" {
-  ami             = "ami-0f58b397bc5c1f2e8" # Ubuntu 22.04 ap-south-1
-  instance_type   = var.backend_instance_type
-  subnet_id       = aws_subnet.public.id
-  key_name        = var.key_pair_name
-  security_groups = [aws_security_group.backend.id]
+  ami                    = "ami-0f58b397bc5c1f2e8" # Ubuntu 22.04 ap-south-1
+  instance_type          = var.backend_instance_type
+  subnet_id              = aws_subnet.public_a.id
+  key_name               = var.key_pair_name
+  vpc_security_group_ids = [aws_security_group.backend.id]
 
   tags = { Name = "farmforce-backend" }
 }
@@ -110,7 +123,7 @@ resource "aws_db_instance" "postgres" {
 
 resource "aws_db_subnet_group" "main" {
   name       = "farmforce-db-subnet-group"
-  subnet_ids = [aws_subnet.public.id]
+  subnet_ids = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 }
 
 # ElastiCache Redis
@@ -135,8 +148,8 @@ resource "random_id" "suffix" {
 resource "aws_s3_bucket_public_access_block" "media" {
   bucket = aws_s3_bucket.media.id
 
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }

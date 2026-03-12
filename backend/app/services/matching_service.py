@@ -14,7 +14,7 @@ class MatchingService:
     }
 
     def _distance_score(self, worker, job) -> float:
-        """Score 40 points max — higher for closer workers (max 40 km)."""
+        """Score 0–40 (raw, before weighting) — higher for closer workers (max 50 km radius)."""
         dist = haversine_distance(
             worker.location_lat if hasattr(worker, "location_lat") else 0,
             worker.location_lng if hasattr(worker, "location_lng") else 0,

@@ -15,7 +15,6 @@ class VoiceJobParser:
         "TRANSPLANTING": ["transplant", "ropai", "रोपाई", "रोपणी"],
         "IRRIGATION": ["irrigat", "sinchai", "सिंचाई", "पाणी देणे"],
         "SPRAYING": ["spray", "davai", "दवाई", "फवारणी"],
-        "HARVESTING": ["harvest", "काटाई", "कापणी"],
         "LOADING": ["load", "bhojan", "लोडिंग"],
     }
 
